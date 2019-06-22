@@ -3,6 +3,8 @@
 #include <string.h>
 
 #include "ikcp.h"
+#include "udp_server.c"
+#include "udp_client.c"
 
 #ifdef __unix
 #include <unistd.h>
@@ -14,6 +16,8 @@
 IUINT32 conv = 0;
 void *user = NULL;
 ikcpcb *kcp = NULL;
+int sockfd = -1;
+int flag = 0;//0--client    1--server
 
 /* get system time */
 static inline void itimeofday(long *sec, long *usec)
@@ -61,7 +65,11 @@ static inline IUINT32 iclock()
 
 int output(const char *buf, int len, struct IKCPCB *kcp, void *user)
 {
-    printf("output!\n");
+    //printf("output!\n");
+    if(flag == 0)
+        UdpClientSend(sockfd,buf,len);
+    else 
+        UdpServerSend(sockfd,buf,len);
 }
 
 int SendData(ikcpcb *kcp, char *buf,int len)
@@ -77,7 +85,13 @@ int SendData(ikcpcb *kcp, char *buf,int len)
 int RecvData(ikcpcb *kcp,char *buf)
 {
     if(kcp == NULL) return -1;
-    int size = ikcp_recv(kcp,buf,1024);
+    char *recvBuf[1024];
+    if(flag == 0)
+        UdpClientRevcfrom(sockfd,recvBuf,sizeof(recvBuf));
+    else
+        UdpServerRecvfrom(sockfd,recvBuf,sizeof(recvBuf));
+    ikcp_input(kcp,recvBuf,strlen(recvBuf));
+    int size = ikcp_recv(kcp,buf,strlen(recvBuf));
     
     return size;
 }
@@ -85,30 +99,32 @@ int RecvData(ikcpcb *kcp,char *buf)
 int main(int argc,char *argv[])
 {
     
-    char *revBuf = NULL;
-
-    int num = atoi(argv[1]);
-    kcp = ikcp_create(conv,(void *)num);
+    char recvBuf[1024];
+    memset(recvBuf,0,1024);
+    int flag = atoi(argv[1]);
+    conv = 0x11223344;
+    kcp = ikcp_create(conv,(void *)flag);
     kcp->output = output;
 
-    if(num == 0){
+    if(flag == 0){
+        sockfd = InitUdpClient();
         const char *msg = "kcp test!";
         printf("send msg!\n");
         if(SendData(kcp,msg,strlen(msg)) != -1) perror("SendData Error!");
-        if(RecvData(kcp,revBuf) <= 0) perror("RecvData Error!");
-        if(NULL != revBuf)
-        {
-            printf("%s\n",revBuf);
-            free(revBuf);
-        }
+        if(RecvData(kcp,recvBuf) <= 0) perror("RecvData Error!");
+        printf("%s\n",recvBuf);
+
+        close(sockfd);
     }
     else
     {
+        sockfd = InitUdpServer();
         int ret = 0;
-        do{ret = RecvData(kcp,revBuf);}while (ret <= 0);
+        do{ret = RecvData(kcp,recvBuf);}while (ret <= 0);
         
-        if(SendData(kcp,revBuf,strlen(revBuf)) != -1) perror("SendData Error!");
-        free(revBuf);
+        if(SendData(kcp,recvBuf,strlen(recvBuf)) != -1) perror("SendData Error!");
+
+        close(sockfd);
     }
     
 
