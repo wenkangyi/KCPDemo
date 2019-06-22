@@ -27,7 +27,7 @@ int UdpClientSend(int sockfd,char *buf,int bufLen)
     return  0;
 }
 
-int UdpClientRevcfrom(int sockfd,char *recvBuf,int revcLen)
+int UdpClientRecvfrom(int sockfd,char *recvBuf,int revcLen)
 {
     socklen_t len=sizeof(addr);
     recvfrom(sockfd,recvBuf,revcLen,0,(struct sockaddr*)&addr,&len);
