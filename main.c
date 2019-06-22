@@ -53,6 +53,11 @@ static inline IINT64 iclock64(void)
 	return value;
 }
 
+static inline IUINT32 iclock()
+{
+	return (IUINT32)(iclock64() & 0xfffffffful);
+}
+
 
 int output(const char *buf, int len, struct IKCPCB *kcp, void *user)
 {
@@ -99,7 +104,9 @@ int main(int argc,char *argv[])
     }
     else
     {
-        if(RecvData(kcp,revBuf) <= 0) perror("RecvData Error!");
+        int ret = 0;
+        do{ret = RecvData(kcp,revBuf);}while (ret <= 0);
+        
         if(SendData(kcp,revBuf,strlen(revBuf)) != -1) perror("SendData Error!");
         free(revBuf);
     }
