@@ -18,7 +18,7 @@ void *user = NULL;
 ikcpcb *kcp = NULL;
 int sockfd = -1;
 int flag = 0;//0--client    1--server
-
+int exitThread = 0;//1-->exit
 
 
 
@@ -88,22 +88,25 @@ int SendData(ikcpcb *kcp, char *buf,int len)
 int RecvData(ikcpcb *kcp,char *buf)
 {
     if(kcp == NULL) return -1;
-    printf("--> RecvData");
+    printf("\n--> RecvData\n");
     char recvBuf[1024];
     int recvLen = 0;
     if(flag == 0){
-        printf("--> start UdpClientRecvfrom");
+        printf("\n--> start UdpClientRecvfrom\n");
         recvLen = UdpClientRecvfrom(sockfd,recvBuf,sizeof(recvBuf));
-        printf("--> end UdpClientRecvfrom");
+        printf("\n--> end UdpClientRecvfrom\n");
     }
     else{
-        printf("--> start UdpServerRecvfrom");
+        printf("\n--> start UdpServerRecvfrom\n");
         recvLen = UdpServerRecvfrom(sockfd,recvBuf,sizeof(recvBuf));
-        printf("--> end UdpServerRecvfrom");
+        printf("\n--> end UdpServerRecvfrom\n");
     }
     
     int num = ikcp_input(kcp,(const char*)recvBuf,recvLen);
-    int size = ikcp_recv(kcp,buf,num);
+    /*ikcp_update(kcp,iclock());
+    ikcp_update(kcp,iclock());
+    ikcp_update(kcp,iclock());*/
+    int size = ikcp_recv(kcp,buf,recvLen);
     
     return size;
 }
@@ -113,6 +116,7 @@ void *Thread_Update(void *arg){
     {
         usleep(10);
         ikcp_update(kcp,iclock());
+        if(exitThread == 1) break;
     }
 }
 
@@ -124,7 +128,7 @@ int main(int argc,char *argv[])
     memset(recvBuf,0,1024);
     flag = atoi(argv[1]);
     conv = 0x11223344;
-    kcp = ikcp_create(conv+flag,(void *)flag);
+    kcp = ikcp_create(conv,(void *)flag);
     kcp->output = output;
 
     pthread_t thread_id;
@@ -137,12 +141,10 @@ int main(int argc,char *argv[])
     if(flag == 0){
         sockfd = InitUdpClient();
         char *msg = "kcp test!";
-        printf("send msg!\n");
+        printf("send msg:%s\n",msg);
         if(SendData(kcp,msg,strlen((const char*)msg)) != 0) perror("SendData Error!");
         if(RecvData(kcp,recvBuf) <= 0) perror("RecvData Error!");
-        printf("%s\n",recvBuf);
-
-        close(sockfd);
+        printf("client recv msg:%s\n",recvBuf);
     }
     else
     {
@@ -153,10 +155,10 @@ int main(int argc,char *argv[])
         }while (ret <= 0);
         printf("server recv msg:%s\n",recvBuf);
         if(SendData(kcp,recvBuf,strlen((const char*)recvBuf)) != 0) perror("SendData Error!");
-
-        close(sockfd);
+        sleep(2);
     }
+    exitThread = 1;
     pthread_join(thread_id,NULL);
-
+    close(sockfd);
     return 0;
 }
