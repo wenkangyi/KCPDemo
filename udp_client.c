@@ -30,8 +30,8 @@ int UdpClientSend(int sockfd,char *buf,int bufLen)
 int UdpClientRecvfrom(int sockfd,char *recvBuf,int revcLen)
 {
     socklen_t len=sizeof(addr);
-    recvfrom(sockfd,recvBuf,revcLen,0,(struct sockaddr*)&addr,&len);
-    return 0;
+    int num = recvfrom(sockfd,recvBuf,revcLen,0,(struct sockaddr*)&addr,&len);
+    return num;
 }
 
 #if 0

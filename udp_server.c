@@ -33,7 +33,8 @@ int InitUdpServer()
 int UdpServerRecvfrom(int sockfd,char *recvBuf,int recvLen)
 {
     socklen_t len=sizeof(cli);
-    recvfrom(sockfd,recvBuf,recvLen,0,(struct sockaddr*)&cli,&len);
+    int num = recvfrom(sockfd,recvBuf,recvLen,0,(struct sockaddr*)&cli,&len);
+    return num;
 }
 
 int UdpServerSend(int sockfd,char *buf,int bufLen)

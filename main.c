@@ -88,12 +88,21 @@ int SendData(ikcpcb *kcp, char *buf,int len)
 int RecvData(ikcpcb *kcp,char *buf)
 {
     if(kcp == NULL) return -1;
+    printf("--> RecvData");
     char recvBuf[1024];
-    if(flag == 0)
-        UdpClientRecvfrom(sockfd,recvBuf,sizeof(recvBuf));
-    else
-        UdpServerRecvfrom(sockfd,recvBuf,sizeof(recvBuf));
-    int num = ikcp_input(kcp,(const char*)recvBuf,strlen((const char*)recvBuf));
+    int recvLen = 0;
+    if(flag == 0){
+        printf("--> start UdpClientRecvfrom");
+        recvLen = UdpClientRecvfrom(sockfd,recvBuf,sizeof(recvBuf));
+        printf("--> end UdpClientRecvfrom");
+    }
+    else{
+        printf("--> start UdpServerRecvfrom");
+        recvLen = UdpServerRecvfrom(sockfd,recvBuf,sizeof(recvBuf));
+        printf("--> end UdpServerRecvfrom");
+    }
+    
+    int num = ikcp_input(kcp,(const char*)recvBuf,recvLen);
     int size = ikcp_recv(kcp,buf,num);
     
     return size;
@@ -113,9 +122,9 @@ int main(int argc,char *argv[])
     
     char recvBuf[1024];
     memset(recvBuf,0,1024);
-    int flag = atoi(argv[1]);
+    flag = atoi(argv[1]);
     conv = 0x11223344;
-    kcp = ikcp_create(conv,(void *)flag);
+    kcp = ikcp_create(conv+flag,(void *)flag);
     kcp->output = output;
 
     pthread_t thread_id;
@@ -139,8 +148,10 @@ int main(int argc,char *argv[])
     {
         sockfd = InitUdpServer();
         int ret = 0;
-        do{ret = RecvData(kcp,recvBuf);}while (ret <= 0);
-        
+        do{
+            ret = RecvData(kcp,recvBuf);
+        }while (ret <= 0);
+        printf("server recv msg:%s\n",recvBuf);
         if(SendData(kcp,recvBuf,strlen((const char*)recvBuf)) != 0) perror("SendData Error!");
 
         close(sockfd);
